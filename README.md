@@ -18,9 +18,17 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
+The base deployment intentionally keeps heavy YOLO packages out of `requirements.txt`
+so Streamlit Cloud can install quickly and reliably.
+
+For full local AI detection, install the optional model packages:
+
+```bash
+pip install ultralytics opencv-python-headless
+```
+
 ## Streamlit Cloud Deploy
 
-This project includes `packages.txt` for OpenCV system libraries required on Streamlit Cloud.
 If deployment still shows a redacted `ImportError`, open **Manage app > Reboot app** after pushing the latest files.
 
 If the app says `yolov8n.pt` was not found, click the download button in the app or let the app download it automatically on first detection.

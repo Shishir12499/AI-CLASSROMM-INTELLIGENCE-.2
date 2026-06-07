@@ -87,7 +87,11 @@ def load_model():
     try:
         from ultralytics import YOLO
     except Exception as exc:
-        return None, f"Ultralytics/OpenCV could not be imported: {exc}"
+        return None, (
+            f"Optional AI model package is not installed: {exc}. "
+            "The dashboard can still run. Install ultralytics and opencv-python-headless "
+            "for full YOLO detection."
+        )
 
     model_path = MODEL_PATH if MODEL_PATH.exists() else next(
         (path for path in LEGACY_MODEL_PATHS if path.exists()),
