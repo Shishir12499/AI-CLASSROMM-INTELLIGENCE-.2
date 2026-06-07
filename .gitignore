@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.streamlit/secrets.toml
+
+# Local test logs
+streamlit-*.log
+
+# Downloaded at runtime by app.py
+models/
+yolov8*.pt
+*.pt.download
+
+# Typo/duplicate dependency file; Streamlit Cloud uses requirements.txt
+requirement.txt

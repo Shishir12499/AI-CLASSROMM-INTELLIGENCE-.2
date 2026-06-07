@@ -14,11 +14,11 @@ except Exception:
     cv2 = None
 
 BASE_DIR = Path(__file__).resolve().parent
-MODEL_NAME = "yolov8s.pt"
-MODEL_DIR = BASE_DIR / "models"
+MODEL_NAME = "yolov8n.pt"
+MODEL_DIR = Path.home() / ".cache" / "ai-classroom-intelligence"
 MODEL_PATH = MODEL_DIR / MODEL_NAME
-LEGACY_MODEL_PATH = BASE_DIR / MODEL_NAME
-MODEL_URL = "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8s.pt"
+LEGACY_MODEL_PATHS = [BASE_DIR / MODEL_NAME, BASE_DIR / "yolov8s.pt"]
+MODEL_URL = "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8n.pt"
 MIN_MODEL_SIZE_MB = 5
 SAMPLE_IMAGE_PATH = BASE_DIR / "sample_classroom.jpg"
 STUDENTS_PATH = BASE_DIR / "students.csv"
@@ -89,17 +89,20 @@ def load_model():
     except Exception as exc:
         return None, f"Ultralytics/OpenCV could not be imported: {exc}"
 
-    model_path = MODEL_PATH if MODEL_PATH.exists() else LEGACY_MODEL_PATH
+    model_path = MODEL_PATH if MODEL_PATH.exists() else next(
+        (path for path in LEGACY_MODEL_PATHS if path.exists()),
+        MODEL_PATH,
+    )
     if not model_path.exists():
         try:
             download_model()
             model_path = MODEL_PATH
         except Exception as exc:
-            return None, f"Could not download yolov8s.pt automatically: {exc}"
+            return None, f"Could not download {MODEL_NAME} automatically: {exc}"
     model_size_mb = model_path.stat().st_size / (1024 * 1024)
     if model_size_mb < MIN_MODEL_SIZE_MB:
         return None, (
-            f"yolov8s.pt looks incomplete or corrupted. Current size: {model_size_mb:.2f} MB. "
+            f"{MODEL_NAME} looks incomplete or corrupted. Current size: {model_size_mb:.2f} MB. "
             "Download a fresh copy using the button below."
         )
     try:
@@ -378,17 +381,17 @@ def render_model_error(error):
     if not error:
         return
     st.warning(error)
-    if st.button("Download fresh yolov8s.pt"):
-        with st.spinner("Downloading yolov8s.pt..."):
+    if st.button(f"Download fresh {MODEL_NAME}"):
+        with st.spinner(f"Downloading {MODEL_NAME}..."):
             try:
                 download_model()
                 st.cache_resource.clear()
-                st.success("Downloaded yolov8s.pt successfully. Reloading the app...")
+                st.success(f"Downloaded {MODEL_NAME} successfully. Reloading the app...")
                 st.rerun()
             except Exception as exc:
                 st.error(f"Download failed: {exc}")
-                st.info("You can also manually download yolov8s.pt and place it beside app.py.")
-    st.info("The app is open. Add a valid yolov8s.pt in this folder to enable real detection.")
+                st.info(f"You can also manually download {MODEL_NAME} and place it in {MODEL_DIR}.")
+    st.info(f"The app is open. Add a valid {MODEL_NAME} to enable real detection.")
 
 
 def image_detection_dashboard():
@@ -396,15 +399,22 @@ def image_detection_dashboard():
     uploaded_file = st.file_uploader("Upload classroom image", type=["jpg", "jpeg", "png"])
 
     input_image = Image.open(uploaded_file).convert("RGB") if uploaded_file else load_sample_image()
-    annotated_image, counts, error = run_detection(input_image)
 
     left, right = st.columns([2, 1])
     with left:
-        st.image(annotated_image, use_container_width=True)
+        image_placeholder = st.empty()
+        image_placeholder.image(input_image, use_container_width=True)
     with right:
         st.subheader("Classroom Report")
-        render_model_error(error)
-        render_report(counts)
+        if st.button("Run Detection"):
+            with st.spinner("Running classroom detection..."):
+                annotated_image, counts, error = run_detection(input_image)
+            image_placeholder.image(annotated_image, use_container_width=True)
+            render_model_error(error)
+            render_report(counts)
+        else:
+            st.info("Upload an image, then run detection.")
+            render_report({})
 
 
 def teacher_dashboard():

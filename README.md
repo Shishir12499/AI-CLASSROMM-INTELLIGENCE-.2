@@ -7,7 +7,7 @@ This Streamlit project shows classroom monitoring scenarios such as person prese
 - `app.py` - Main Streamlit dashboard.
 - `requirements.txt` - Python packages needed to run the app.
 - `students.csv` - Seed student dataset used by the registration and student dashboards.
-- `yolov8s.pt` - Pretrained YOLOv8 small model. Put this file in the same folder as `app.py`.
+- `yolov8n.pt` - Downloaded automatically into the app cache on first use. Do not commit model files.
 - `sample_classroom.jpg` - Sample classroom image. If this file is not a valid image, the app creates a demo scene automatically.
 - `README.md` - Project notes.
 
@@ -23,13 +23,13 @@ streamlit run app.py
 This project includes `packages.txt` for OpenCV system libraries required on Streamlit Cloud.
 If deployment still shows a redacted `ImportError`, open **Manage app > Reboot app** after pushing the latest files.
 
-If the app says `yolov8s.pt was not found`, download the model once and place it beside `app.py`.
+If the app says `yolov8n.pt` was not found, click the download button in the app or let the app download it automatically on first detection.
 
-If the app says the model is corrupted, click **Download fresh yolov8s.pt** inside the Streamlit app. This replaces the bad file with a fresh model from Ultralytics.
+If the app says the model is corrupted, click the download button inside the Streamlit app. This replaces the bad file with a fresh model from Ultralytics.
 
 ## Detected Classes
 
-The app uses the pretrained `yolov8s.pt` model to detect these COCO classes:
+The app uses the pretrained `yolov8n.pt` model to detect these COCO classes:
 
 ```text
 person
@@ -66,6 +66,6 @@ Teacher Dashboard - classroom report, image detection, student records
 Student Dashboard - selected student profile and detection meaning
 New Student Registration - add students into students.csv
 Image Detection - upload classroom images
-Live Video Detection - webcam detection with YOLOv8s fast mode
+Live Video Detection - webcam detection with YOLOv8 nano fast mode
 Uploaded Video Detection - scan uploaded classroom videos
 ```
