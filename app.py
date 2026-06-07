@@ -2,7 +2,6 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
-import cv2
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -10,18 +9,20 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 try:
-    from ultralytics import YOLO
+    import cv2
 except Exception:
-    YOLO = None
-
+    cv2 = None
 
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_NAME = "yolov8s.pt"
-MODEL_PATH = BASE_DIR / MODEL_NAME
+MODEL_DIR = BASE_DIR / "models"
+MODEL_PATH = MODEL_DIR / MODEL_NAME
+LEGACY_MODEL_PATH = BASE_DIR / MODEL_NAME
 MODEL_URL = "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8s.pt"
 MIN_MODEL_SIZE_MB = 5
 SAMPLE_IMAGE_PATH = BASE_DIR / "sample_classroom.jpg"
 STUDENTS_PATH = BASE_DIR / "students.csv"
+STUDENT_COLUMNS = ["student_id", "name", "class_name", "roll_no", "email", "phone", "registered_at"]
 
 TARGET_CLASSES = {
     "person": "Person Present",
@@ -83,26 +84,32 @@ def load_sample_image() -> Image.Image:
 
 @st.cache_resource
 def load_model():
-    if YOLO is None:
-        return None, "Ultralytics is not installed. Run: pip install -r requirements.txt"
-    if not MODEL_PATH.exists():
-        return None, (
-            "yolov8s.pt was not found in this project folder. "
-            "Download yolov8s.pt once and place it beside app.py."
-        )
-    model_size_mb = MODEL_PATH.stat().st_size / (1024 * 1024)
+    try:
+        from ultralytics import YOLO
+    except Exception as exc:
+        return None, f"Ultralytics/OpenCV could not be imported: {exc}"
+
+    model_path = MODEL_PATH if MODEL_PATH.exists() else LEGACY_MODEL_PATH
+    if not model_path.exists():
+        try:
+            download_model()
+            model_path = MODEL_PATH
+        except Exception as exc:
+            return None, f"Could not download yolov8s.pt automatically: {exc}"
+    model_size_mb = model_path.stat().st_size / (1024 * 1024)
     if model_size_mb < MIN_MODEL_SIZE_MB:
         return None, (
             f"yolov8s.pt looks incomplete or corrupted. Current size: {model_size_mb:.2f} MB. "
             "Download a fresh copy using the button below."
         )
     try:
-        return YOLO(str(MODEL_PATH)), None
+        return YOLO(str(model_path)), None
     except Exception as exc:
         return None, f"Could not load {MODEL_NAME}: {exc}"
 
 
 def download_model():
+    MODEL_DIR.mkdir(exist_ok=True)
     temp_path = MODEL_PATH.with_suffix(".pt.download")
     urllib.request.urlretrieve(MODEL_URL, temp_path)
     temp_size_mb = temp_path.stat().st_size / (1024 * 1024)
@@ -338,16 +345,27 @@ def build_status(counts):
 
 
 def load_students():
-    columns = ["student_id", "name", "class_name", "roll_no", "email", "phone", "registered_at"]
     if not STUDENTS_PATH.exists():
-        return pd.DataFrame(columns=columns)
-    return pd.read_csv(STUDENTS_PATH)
+        return pd.DataFrame(columns=STUDENT_COLUMNS)
+    try:
+        students = pd.read_csv(STUDENTS_PATH, dtype=str).fillna("")
+    except (pd.errors.EmptyDataError, pd.errors.ParserError, OSError) as exc:
+        st.warning(f"Could not load students.csv: {exc}")
+        return pd.DataFrame(columns=STUDENT_COLUMNS)
+
+    for column in STUDENT_COLUMNS:
+        if column not in students.columns:
+            students[column] = ""
+    return students[STUDENT_COLUMNS]
 
 
 def save_student(student):
     students = load_students()
     students = pd.concat([students, pd.DataFrame([student])], ignore_index=True)
-    students.to_csv(STUDENTS_PATH, index=False)
+    try:
+        students.to_csv(STUDENTS_PATH, index=False)
+    except OSError as exc:
+        st.error(f"Could not save students.csv: {exc}")
 
 
 def render_report(counts):
@@ -480,6 +498,10 @@ def live_video_detection_dashboard():
     st.subheader("Live Video Detection")
     st.caption("Uses your webcam. Fast mode is used for smoother live detection.")
 
+    if cv2 is None:
+        st.error("OpenCV is not available. On Streamlit Cloud, push packages.txt and reboot the app.")
+        return
+
     camera_index = st.number_input("Camera index", min_value=0, max_value=5, value=0, step=1)
     max_frames = st.slider("Frames to process after pressing Start", 10, 300, 80, 10)
     start = st.button("Start Live Detection")
@@ -515,6 +537,11 @@ def live_video_detection_dashboard():
 
 def video_file_detection_dashboard():
     st.subheader("Uploaded Video Detection")
+
+    if cv2 is None:
+        st.error("OpenCV is not available. On Streamlit Cloud, push packages.txt and reboot the app.")
+        return
+
     video_file = st.file_uploader("Upload classroom video", type=["mp4", "avi", "mov", "mkv"])
     if not video_file:
         st.info("Upload a video file to scan frames.")
@@ -562,10 +589,6 @@ st.set_page_config(page_title="AI Classroom Intelligence", layout="wide")
 
 st.title("AI Classroom Intelligence")
 st.caption("Person presence, empty chair, laptop, and mobile phone monitoring")
-st.info(
-    "High accuracy mode is enabled: the app scans the full image and smaller image tiles. "
-    "For best counting, upload a sharp classroom image. Very small or hidden people may not be counted accurately."
-)
 
 with st.expander("Problem Statement", expanded=True):
     st.write(

@@ -6,6 +6,7 @@ This Streamlit project shows classroom monitoring scenarios such as person prese
 
 - `app.py` - Main Streamlit dashboard.
 - `requirements.txt` - Python packages needed to run the app.
+- `students.csv` - Seed student dataset used by the registration and student dashboards.
 - `yolov8s.pt` - Pretrained YOLOv8 small model. Put this file in the same folder as `app.py`.
 - `sample_classroom.jpg` - Sample classroom image. If this file is not a valid image, the app creates a demo scene automatically.
 - `README.md` - Project notes.
@@ -16,6 +17,11 @@ This Streamlit project shows classroom monitoring scenarios such as person prese
 pip install -r requirements.txt
 streamlit run app.py
 ```
+
+## Streamlit Cloud Deploy
+
+This project includes `packages.txt` for OpenCV system libraries required on Streamlit Cloud.
+If deployment still shows a redacted `ImportError`, open **Manage app > Reboot app** after pushing the latest files.
 
 If the app says `yolov8s.pt was not found`, download the model once and place it beside `app.py`.
 
